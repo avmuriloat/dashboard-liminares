@@ -1,1 +1,569 @@
 
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leticia — Dashboard TudoAzul</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+:root {
+  --bg:#0b0e14;--surface:#151921;--surface2:#1c2130;--surface3:#242a3a;
+  --border:#272e40;--text:#e8ecf4;--text2:#6b7694;--text3:#4a5470;
+  --azul:#2d7aff;--azul-glow:rgba(45,122,255,.12);
+  --green:#34d399;--green-dim:rgba(52,211,153,.1);
+  --red:#f87171;--red-dim:rgba(248,113,113,.1);
+  --amber:#fbbf24;--amber-dim:rgba(251,191,36,.1);
+  --purple:#a78bfa;--purple-dim:rgba(167,139,250,.1);
+  --cyan:#22d3ee;--cyan-dim:rgba(34,211,238,.1);
+  --radius:16px;--radius-sm:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+.container{max-width:1400px;margin:0 auto;padding:28px 24px;}
+
+/* Loading */
+.loading-overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;transition:opacity .4s;}
+.loading-overlay.hidden{opacity:0;pointer-events:none;}
+.spinner{width:48px;height:48px;border:4px solid var(--border);border-top-color:var(--azul);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{margin-top:16px;font-size:14px;color:var(--text2);}
+
+/* Header */
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;flex-wrap:wrap;gap:16px;}
+.header-left{display:flex;align-items:center;gap:16px;}
+.avatar{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#2d7aff,#7c5cfc);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;letter-spacing:-1px;}
+.header h1{font-size:22px;font-weight:800;letter-spacing:-.6px;}
+.header .sub{font-size:13px;color:var(--text2);margin-top:2px;}
+.header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.status-pill{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;}
+.status-pill.active{background:var(--green-dim);color:var(--green);}
+.status-pill.active::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--green);}
+.status-pill.liminar{background:var(--azul-glow);color:var(--azul);}
+.refresh-btn{padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text2);transition:all .15s;}
+.refresh-btn:hover{border-color:var(--azul);color:var(--text);}
+
+/* Agency Filter Chips */
+.agency-filters{display:flex;gap:10px;margin-bottom:28px;flex-wrap:wrap;align-items:center;}
+.agency-filters .label{font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-right:4px;}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;border:2px solid var(--border);background:var(--surface);color:var(--text2);transition:all .2s;user-select:none;}
+.chip:hover{transform:translateY(-1px);border-color:var(--text3);}
+.chip .dot{width:10px;height:10px;border-radius:50%;}
+.chip.active{transform:translateY(-1px);}
+.chip[data-filter="all"].active{border-color:var(--azul);background:var(--azul-glow);color:var(--azul);}
+.chip[data-filter="all"] .dot{background:var(--azul);}
+.chip[data-filter="xmiles"].active{border-color:var(--green);background:var(--green-dim);color:var(--green);}
+.chip[data-filter="xmiles"] .dot{background:var(--green);}
+.chip[data-filter="speed"].active{border-color:var(--purple);background:var(--purple-dim);color:var(--purple);}
+.chip[data-filter="speed"] .dot{background:var(--purple);}
+.chip[data-filter="outros"].active{border-color:var(--amber);background:var(--amber-dim);color:var(--amber);}
+.chip[data-filter="outros"] .dot{background:var(--amber);}
+.chip .count{font-size:11px;opacity:.7;}
+
+/* KPI Strip */
+.kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:28px;}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radius) var(--radius) 0 0;}
+.kpi.k-blue::before{background:var(--azul);}
+.kpi.k-green::before{background:var(--green);}
+.kpi.k-red::before{background:var(--red);}
+.kpi.k-amber::before{background:var(--amber);}
+.kpi.k-purple::before{background:var(--purple);}
+.kpi.k-cyan::before{background:var(--cyan);}
+.kpi-label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;font-weight:600;}
+.kpi-value{font-size:24px;font-weight:800;letter-spacing:-1px;margin-top:6px;}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:4px;}
+
+/* Charts */
+.split-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;}
+@media(max-width:900px){.split-row{grid-template-columns:1fr;}}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;}
+.panel-title{font-size:15px;font-weight:700;margin-bottom:4px;}
+.panel-sub{font-size:12px;color:var(--text2);margin-bottom:18px;}
+.chart-box{position:relative;height:260px;}
+
+/* Transactions table */
+.tx-panel{margin-bottom:24px;}
+.tx-controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
+.filter-btn{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text2);transition:all .15s;}
+.filter-btn:hover{border-color:var(--azul);color:var(--text);}
+.filter-btn.active{background:var(--azul);border-color:var(--azul);color:#fff;}
+.search-input{flex:1;min-width:180px;padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;outline:none;}
+.search-input:focus{border-color:var(--azul);}
+.search-input::placeholder{color:var(--text3);}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{text-align:left;padding:10px 12px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:2;}
+td{padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;}
+tr:hover td{background:var(--surface2);}
+.tx-table-wrap{max-height:520px;overflow-y:auto;border-radius:var(--radius-sm);}
+.tx-table-wrap::-webkit-scrollbar{width:6px;}
+.tx-table-wrap::-webkit-scrollbar-track{background:var(--surface);}
+.tx-table-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.tag{display:inline-block;padding:3px 8px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
+.tag-debit{background:var(--red-dim);color:var(--red);}
+.tag-credit{background:var(--green-dim);color:var(--green);}
+.tag-refund{background:var(--amber-dim);color:var(--amber);}
+.tag-issuance{background:var(--cyan-dim);color:var(--cyan);}
+.tag-campaign{background:var(--purple-dim);color:var(--purple);}
+.pts{font-weight:700;font-variant-numeric:tabular-nums;}
+.pts.neg{color:var(--red);}
+.pts.pos{color:var(--green);}
+.loc-code{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;color:var(--azul);}
+.route{color:var(--text2);font-size:11px;}
+.agency{font-size:11px;color:var(--text2);}
+.agency.xmiles{color:var(--green);}
+.agency.speed{color:var(--purple);}
+.count-info{font-size:12px;color:var(--text2);margin-left:auto;}
+.footer{text-align:center;padding:24px;font-size:11px;color:var(--text3);}
+
+/* Error */
+.error-box{background:var(--red-dim);border:1px solid rgba(248,113,113,.3);border-radius:var(--radius);padding:24px;text-align:center;margin-bottom:24px;}
+.error-box h3{color:var(--red);margin-bottom:8px;}
+.error-box p{color:var(--text2);font-size:13px;}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Carregando dados do Google Sheets...</div>
+</div>
+
+<div class="container" id="mainContent" style="display:none">
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <div class="avatar">LT</div>
+    <div>
+      <h1>Leticia Amorim Teixeira</h1>
+      <div class="sub">Conta Azul Fidelidade — Liminar — Clube 1.000 pts/mes</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="status-pill liminar">LIMINAR</span>
+    <span class="status-pill active">ATIVO</span>
+    <button class="refresh-btn" onclick="loadData()">&#8635; Atualizar</button>
+  </div>
+</div>
+
+<!-- Agency filter chips -->
+<div class="agency-filters">
+  <span class="label">Filtrar por:</span>
+  <div class="chip active" data-filter="all" onclick="setAgencyFilter('all')">
+    <span class="dot"></span>TODOS<span class="count" id="countAll"></span>
+  </div>
+  <div class="chip" data-filter="xmiles" onclick="setAgencyFilter('xmiles')">
+    <span class="dot"></span>XMILES<span class="count" id="countXmiles"></span>
+  </div>
+  <div class="chip" data-filter="speed" onclick="setAgencyFilter('speed')">
+    <span class="dot"></span>SPEED<span class="count" id="countSpeed"></span>
+  </div>
+  <div class="chip" data-filter="outros" onclick="setAgencyFilter('outros')">
+    <span class="dot"></span>OUTROS<span class="count" id="countOutros"></span>
+  </div>
+</div>
+
+<!-- KPI strip -->
+<div class="kpi-strip" id="kpiStrip"></div>
+
+<!-- Charts row 1 -->
+<div class="split-row">
+  <div class="panel">
+    <div class="panel-title">Movimentacao Diaria</div>
+    <div class="panel-sub">Creditos vs Debitos por dia (em milhares de pontos)</div>
+    <div class="chart-box"><canvas id="chartDaily"></canvas></div>
+  </div>
+  <div class="panel">
+    <div class="panel-title">Origem dos Creditos</div>
+    <div class="panel-sub">Fontes de pontos creditados</div>
+    <div class="chart-box"><canvas id="chartSources"></canvas></div>
+  </div>
+</div>
+
+<!-- Charts row 2 -->
+<div class="split-row">
+  <div class="panel">
+    <div class="panel-title">Evolucao do Saldo</div>
+    <div class="panel-sub">Running balance ao longo do periodo</div>
+    <div class="chart-box"><canvas id="chartBalance"></canvas></div>
+  </div>
+  <div class="panel">
+    <div class="panel-title">Top 10 Maiores Debitos</div>
+    <div class="panel-sub">Localizadores com maior consumo de pontos</div>
+    <div class="chart-box"><canvas id="chartTopDebits"></canvas></div>
+  </div>
+</div>
+
+<!-- Transactions -->
+<div class="panel tx-panel">
+  <div class="panel-title">Lancamentos Detalhados</div>
+  <div class="panel-sub" id="txSubtitle"></div>
+  <div class="tx-controls">
+    <div class="filter-btn active" data-type="all" onclick="filterTxType('all',this)">Todos</div>
+    <div class="filter-btn" data-type="debit" onclick="filterTxType('debit',this)">Debitos</div>
+    <div class="filter-btn" data-type="credit" onclick="filterTxType('credit',this)">Creditos</div>
+    <div class="filter-btn" data-type="refund" onclick="filterTxType('refund',this)">Estornos</div>
+    <div class="filter-btn" data-type="issuance" onclick="filterTxType('issuance',this)">Issuance</div>
+    <input class="search-input" type="text" placeholder="Buscar localizador, rota ou agencia..." oninput="searchTx(this.value)">
+    <span class="count-info" id="txCount"></span>
+  </div>
+  <div class="tx-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Localizador</th>
+          <th>Rota</th>
+          <th>Tipo</th>
+          <th style="text-align:right">Pontos</th>
+          <th style="text-align:right">Saldo</th>
+          <th>Agencia</th>
+          <th>Nota</th>
+        </tr>
+      </thead>
+      <tbody id="txBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="footer" id="footerText"></div>
+</div>
+
+<script>
+// ─── CONFIG ───
+const SHEET_ID = '1Kn3yZR6t_8k-dtBZzl3r8CLSi16XrlL8jA78JX1kRMA';
+const GID = '1158257154'; // LETICIA tab
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}`;
+
+let allData = [];
+let currentAgency = 'all';
+let currentType = 'all';
+let currentSearch = '';
+let charts = {};
+
+// ─── LOAD DATA ───
+async function loadData() {
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+  try {
+    const resp = await fetch(CSV_URL);
+    if (!resp.ok) throw new Error('Falha ao acessar planilha');
+    const csv = await resp.text();
+    parseCSV(csv);
+    document.getElementById('mainContent').style.display = 'block';
+    document.getElementById('loadingOverlay').classList.add('hidden');
+  } catch (err) {
+    document.getElementById('loadingOverlay').classList.add('hidden');
+    document.getElementById('mainContent').style.display = 'block';
+    document.getElementById('mainContent').innerHTML = `
+      <div class="error-box">
+        <h3>Erro ao carregar dados</h3>
+        <p>${err.message}. Verifique se a planilha esta com compartilhamento publico.</p>
+      </div>`;
+  }
+}
+
+function parseCSV(csv) {
+  const result = Papa.parse(csv, { header: false, skipEmptyLines: true });
+  const rows = result.data;
+
+  // Extract header info
+  const saldoConta = parseNum(rows[0]?.[7]);
+
+  // Data rows start at index 2 (after 2 header rows, skipEmptyLines removes blank rows)
+  allData = [];
+  for (let i = 2; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r[1]) continue; // skip empty
+    const locRoute = parseLocRoute(r[2] || '');
+    const pts = parseNum(r[4]);
+    const bal = parseNum(r[5]);
+    const agencyName = (r[6] || '').trim();
+    const classification = (r[7] || '').trim();
+    const note = (r[8] || '').trim();
+
+    // Determine agency group from classification column (H)
+    const classLower = classification.toLowerCase();
+    let agencyGroup = 'outros';
+    if (classLower.includes('xmiles')) agencyGroup = 'xmiles';
+    else if (classLower.includes('speed')) agencyGroup = 'speed';
+
+    allData.push({
+      date: r[1],
+      loc: locRoute.loc,
+      route: locRoute.route,
+      type: (r[3] || '').trim(),
+      pts: pts,
+      bal: bal,
+      agency: agencyName,
+      note: classification || note,
+      agencyGroup: agencyGroup,
+    });
+  }
+
+  // Calculate saldos from data (CSV header formulas don't export)
+  const saldoTotal = allData.length > 0 ? allData[allData.length - 1].bal : 0;
+  const saldoXmiles = allData.filter(t => t.agencyGroup === 'xmiles').reduce((s, t) => s + t.pts, 0) + 3441;
+  const saldoSpeed = allData.filter(t => t.agencyGroup === 'speed').reduce((s, t) => s + t.pts, 0);
+
+  // Update everything
+  updateCounts();
+  renderKPIs(saldoTotal, saldoXmiles, saldoSpeed, saldoConta);
+  renderCharts();
+  renderTable();
+
+  const firstDate = allData[0]?.date?.slice(0,10) || '';
+  const lastDate = allData[allData.length-1]?.date?.slice(0,10) || '';
+  document.getElementById('txSubtitle').textContent = `${allData.length} transacoes de ${fmtDate(firstDate)} a ${fmtDate(lastDate)}`;
+  document.getElementById('footerText').textContent = `Dashboard Leticia — Azul Fidelidade — Dados ao vivo do Google Sheets — Ultima carga: ${new Date().toLocaleString('pt-BR')}`;
+}
+
+function parseLocRoute(raw) {
+  if (!raw) return { loc: '', route: '' };
+  const bookingMatch = raw.match(/Booking:\s*(\w+)\s*\|\s*From\s+(.+)\s+to\s+(.+)/i);
+  if (bookingMatch) {
+    return { loc: bookingMatch[1], route: shorten(bookingMatch[2]) + ' → ' + shorten(bookingMatch[3]) };
+  }
+  const pnrMatch = raw.match(/PNR\s+(\w+)/i);
+  if (pnrMatch) return { loc: pnrMatch[1], route: 'PNR Estorno' };
+  return { loc: '', route: raw };
+}
+
+function shorten(city) {
+  const map = {
+    'Viracopos International Airport': 'VCP',
+    'São Paulo - Congonhas': 'CGH',
+    'São Paulo - Guarulhos': 'GRU',
+    'Rio de Janeiro - Galeão': 'GIG',
+    'Rio de Janeiro - Santos Dumont': 'SDU',
+    'Belo Horizonte - Confins': 'CNF',
+    'Fort Lauderdale-Hollywood Intern': 'FLL',
+    'Fernando De Noronha': 'Noronha',
+    'Governador Valadares': 'Gov. Valadares',
+    'Vitoria da Conquista': 'V. Conquista',
+    'Foz do Iguacu': 'Foz Iguacu',
+    'Juazeiro do Norte': 'Juazeiro',
+    'Porto Airport': 'Porto (PT)',
+    'Sao Jose do Rio Preto': 'S.J. Rio Preto',
+    'Aeroporto de Guanambi': 'Guanambi',
+  };
+  const trimmed = city.trim();
+  return map[trimmed] || trimmed;
+}
+
+function parseNum(val) {
+  if (!val) return 0;
+  const s = String(val).replace(/\./g, '').replace(',', '.').replace(/[^\d.\-]/g, '');
+  return parseFloat(s) || 0;
+}
+
+function fmtDate(d) {
+  if (!d) return '';
+  const parts = d.split('-');
+  if (parts.length === 3) return parts[2] + '/' + parts[1] + '/' + parts[0];
+  return d;
+}
+
+const fmt = n => n.toLocaleString('pt-BR');
+
+// ─── AGENCY FILTER ───
+function getFiltered() {
+  if (currentAgency === 'all') return allData;
+  return allData.filter(t => t.agencyGroup === currentAgency);
+}
+
+function updateCounts() {
+  document.getElementById('countAll').textContent = ` (${allData.length})`;
+  document.getElementById('countXmiles').textContent = ` (${allData.filter(t=>t.agencyGroup==='xmiles').length})`;
+  document.getElementById('countSpeed').textContent = ` (${allData.filter(t=>t.agencyGroup==='speed').length})`;
+  document.getElementById('countOutros').textContent = ` (${allData.filter(t=>t.agencyGroup==='outros').length})`;
+}
+
+function setAgencyFilter(filter) {
+  currentAgency = filter;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  document.querySelector(`.chip[data-filter="${filter}"]`).classList.add('active');
+  renderKPIsFromFilter();
+  renderCharts();
+  renderTable();
+}
+
+// ─── KPIs ───
+function renderKPIs(saldoTotal, saldoXmiles, saldoSpeed, saldoConta) {
+  window._kpiBase = { saldoTotal, saldoXmiles, saldoSpeed, saldoConta };
+  renderKPIsFromFilter();
+}
+
+function renderKPIsFromFilter() {
+  const data = getFiltered();
+  const base = window._kpiBase || {};
+  const totalEmissoes = data.filter(t=>t.pts<0).reduce((s,t)=>s+t.pts,0);
+  const totalCreditos = data.filter(t=>t.pts>0).reduce((s,t)=>s+t.pts,0);
+  const locs = new Set(data.filter(t=>t.loc).map(t=>t.loc));
+
+  let saldoLabel, saldoValue, saldoColor;
+  if (currentAgency === 'all') {
+    saldoLabel = 'Saldo Conta'; saldoValue = base.saldoTotal; saldoColor = 'var(--azul)';
+  } else if (currentAgency === 'xmiles') {
+    saldoLabel = 'Saldo Xmiles'; saldoValue = base.saldoXmiles; saldoColor = 'var(--green)';
+  } else if (currentAgency === 'speed') {
+    saldoLabel = 'Saldo Speed'; saldoValue = base.saldoSpeed; saldoColor = 'var(--purple)';
+  } else {
+    saldoLabel = 'Saldo Outros'; saldoValue = '—'; saldoColor = 'var(--amber)';
+  }
+
+  const kpiHTML = `
+    <div class="kpi k-blue"><div class="kpi-label">${saldoLabel}</div><div class="kpi-value" style="color:${saldoColor}">${typeof saldoValue==='number'?fmt(saldoValue):saldoValue}</div><div class="kpi-sub">pontos</div></div>
+    <div class="kpi k-green"><div class="kpi-label">Saldo Xmiles</div><div class="kpi-value" style="color:var(--green)">${fmt(base.saldoXmiles||0)}</div><div class="kpi-sub">SOMASE xmiles</div></div>
+    <div class="kpi k-purple"><div class="kpi-label">Saldo Speed</div><div class="kpi-value" style="color:var(--purple)">${fmt(base.saldoSpeed||0)}</div><div class="kpi-sub">Esfera Online</div></div>
+    <div class="kpi k-red"><div class="kpi-label">Total Emissoes</div><div class="kpi-value" style="color:var(--red)">${fmt(totalEmissoes)}</div><div class="kpi-sub">${currentAgency !== 'all' ? currentAgency.toUpperCase() : 'todos'}</div></div>
+    <div class="kpi k-green"><div class="kpi-label">Total Creditos</div><div class="kpi-value" style="color:var(--green)">+${fmt(totalCreditos)}</div><div class="kpi-sub">${currentAgency !== 'all' ? currentAgency.toUpperCase() : 'todos'}</div></div>
+    <div class="kpi k-amber"><div class="kpi-label">Localizadores</div><div class="kpi-value" style="color:var(--amber)">${locs.size}</div><div class="kpi-sub">${data.length} lancamentos</div></div>
+  `;
+  document.getElementById('kpiStrip').innerHTML = kpiHTML;
+}
+
+// ─── CHARTS ───
+function destroyCharts() {
+  Object.values(charts).forEach(c => c.destroy());
+  charts = {};
+}
+
+function renderCharts() {
+  destroyCharts();
+  const data = getFiltered();
+
+  Chart.defaults.color = '#6b7694';
+  Chart.defaults.borderColor = '#272e40';
+  Chart.defaults.font.family = "Inter,-apple-system,sans-serif";
+  Chart.defaults.font.size = 11;
+
+  // 1. Daily credits vs debits
+  const dailyMap = {};
+  data.forEach(t => {
+    const day = t.date?.slice(0,10);
+    if (!day) return;
+    if (!dailyMap[day]) dailyMap[day] = {credits:0,debits:0};
+    if (t.pts > 0) dailyMap[day].credits += t.pts;
+    else if (t.pts < 0) dailyMap[day].debits += Math.abs(t.pts);
+  });
+  const days = Object.keys(dailyMap).sort();
+  charts.daily = new Chart(document.getElementById('chartDaily'), {
+    type:'bar',
+    data:{
+      labels:days.map(d=>d.slice(5).replace('-','/')),
+      datasets:[
+        {label:'Creditos',data:days.map(d=>dailyMap[d].credits/1000),backgroundColor:'rgba(52,211,153,.7)',borderRadius:4,barPercentage:.7},
+        {label:'Debitos',data:days.map(d=>dailyMap[d].debits/1000),backgroundColor:'rgba(248,113,113,.7)',borderRadius:4,barPercentage:.7},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{usePointStyle:true,pointStyle:'circle',padding:14}},tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+ctx.parsed.y.toLocaleString()+'k pts'}}},scales:{x:{grid:{display:false},ticks:{maxRotation:45,font:{size:9}}},y:{grid:{color:'#272e4033'},ticks:{callback:v=>v+'k'}}}}
+  });
+
+  // 2. Credit sources donut
+  const srcMap = {};
+  data.filter(t=>t.pts>0).forEach(t=>{
+    const key = t.agency || 'Outros';
+    srcMap[key] = (srcMap[key]||0) + t.pts;
+  });
+  const srcLabels = Object.keys(srcMap).sort((a,b)=>srcMap[b]-srcMap[a]);
+  const srcColors = ['#2d7aff','#34d399','#fbbf24','#a78bfa','#22d3ee','#f87171','#fb923c','#6366f1'];
+  charts.sources = new Chart(document.getElementById('chartSources'), {
+    type:'doughnut',
+    data:{labels:srcLabels,datasets:[{data:srcLabels.map(l=>srcMap[l]),backgroundColor:srcColors.slice(0,srcLabels.length),borderWidth:0,hoverOffset:8}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'right',labels:{usePointStyle:true,pointStyle:'circle',padding:12,font:{size:11}}},tooltip:{callbacks:{label:ctx=>ctx.label+': '+fmt(ctx.parsed)+' pts'}}}}
+  });
+
+  // 3. Balance evolution line
+  charts.balance = new Chart(document.getElementById('chartBalance'), {
+    type:'line',
+    data:{
+      labels:data.map(t=>(t.date||'').slice(5,10).replace('-','/')),
+      datasets:[{data:data.map(t=>t.bal),borderColor:'#2d7aff',backgroundColor:'rgba(45,122,255,.08)',fill:true,borderWidth:2,pointRadius:0,pointHitRadius:8,tension:.2}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.parsed.y)+' pts'}}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:12,font:{size:9}}},y:{grid:{color:'#272e4033'},ticks:{callback:v=>(v/1000000).toFixed(1)+'M'}}}}
+  });
+
+  // 4. Top 10 debits
+  const locDebits = {};
+  data.filter(t=>t.pts<0&&t.loc).forEach(t=>{
+    if (!locDebits[t.loc]) locDebits[t.loc] = 0;
+    locDebits[t.loc] += Math.abs(t.pts);
+  });
+  const topLocs = Object.entries(locDebits).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  charts.topDebits = new Chart(document.getElementById('chartTopDebits'), {
+    type:'bar',
+    data:{
+      labels:topLocs.map(([loc])=>loc),
+      datasets:[{data:topLocs.map(([,v])=>v/1000),backgroundColor:topLocs.map((_,i)=>`hsla(${i*25},80%,65%,.7)`),borderRadius:6,barPercentage:.6}]
+    },
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.parsed.x*1000)+' pts'}}},scales:{x:{grid:{color:'#272e4033'},ticks:{callback:v=>v+'k'}},y:{grid:{display:false},ticks:{font:{family:'SF Mono,Fira Code,monospace',size:11,weight:'bold'},color:'#2d7aff'}}}}
+  });
+}
+
+// ─── TABLE ───
+function getTypeTag(type, pts) {
+  if (type === 'Redemption Refund') return '<span class="tag tag-refund">ESTORNO</span>';
+  if (type === 'Airline Issuance') return '<span class="tag tag-issuance">ISSUANCE</span>';
+  if (type.includes('Campanha')) return '<span class="tag tag-campaign">CAMPANHA</span>';
+  if (type === 'Sale') return '<span class="tag tag-credit">CREDITO</span>';
+  if (pts < 0) return '<span class="tag tag-debit">DEBITO</span>';
+  return '<span class="tag tag-credit">CREDITO</span>';
+}
+
+function filterTxType(type, btn) {
+  currentType = type;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable();
+}
+
+function searchTx(val) {
+  currentSearch = val;
+  renderTable();
+}
+
+function renderTable() {
+  const tbody = document.getElementById('txBody');
+  let data = getFiltered();
+
+  if (currentType === 'debit') data = data.filter(t=>t.pts<0&&t.type==='Direct redemption');
+  else if (currentType === 'credit') data = data.filter(t=>t.type==='Sale');
+  else if (currentType === 'refund') data = data.filter(t=>t.type==='Redemption Refund');
+  else if (currentType === 'issuance') data = data.filter(t=>t.type==='Airline Issuance');
+
+  if (currentSearch) {
+    const s = currentSearch.toLowerCase();
+    data = data.filter(t=>
+      t.loc.toLowerCase().includes(s)||
+      t.route.toLowerCase().includes(s)||
+      t.agency.toLowerCase().includes(s)||
+      t.note.toLowerCase().includes(s)
+    );
+  }
+
+  document.getElementById('txCount').textContent = data.length + ' lancamentos';
+
+  tbody.innerHTML = data.map(t => {
+    const dateStr = (t.date||'').slice(8,10)+'/'+( t.date||'').slice(5,7);
+    const ptsClass = t.pts<0?'neg':t.pts>0?'pos':'';
+    const agClass = t.agencyGroup==='xmiles'?'xmiles':t.agencyGroup==='speed'?'speed':'';
+    return `<tr>
+      <td>${dateStr}</td>
+      <td>${t.loc?'<span class="loc-code">'+t.loc+'</span>':'—'}</td>
+      <td><span class="route">${t.route||'—'}</span></td>
+      <td>${getTypeTag(t.type,t.pts)}</td>
+      <td style="text-align:right"><span class="pts ${ptsClass}">${t.pts>0?'+':''}${fmt(t.pts)}</span></td>
+      <td style="text-align:right;color:var(--text2)">${fmt(t.bal)}</td>
+      <td><span class="agency ${agClass}">${t.agency}</span></td>
+      <td style="font-size:10px;color:var(--text3)">${t.note}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── INIT ───
+loadData();
+</script>
+</body>
+</html>
