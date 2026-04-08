@@ -53,7 +53,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .chip[data-filter="xmiles-b"].active{border-color:var(--green);background:var(--green-dim);color:var(--green);}.chip[data-filter="xmiles-b"] .dot{background:var(--green);}
 .chip[data-filter="xmiles-e"].active{border-color:var(--cyan);background:var(--cyan-dim);color:var(--cyan);}.chip[data-filter="xmiles-e"] .dot{background:var(--cyan);}
 .chip[data-filter="speed"].active{border-color:var(--purple);background:var(--purple-dim);color:var(--purple);}.chip[data-filter="speed"] .dot{background:var(--purple);}
-.chip[data-filter="outros"].active{border-color:var(--amber);background:var(--amber-dim);color:var(--amber);}.chip[data-filter="outros"] .dot{background:var(--amber);}
+.chip[data-filter="xmiles"].active{border-color:#fb923c;background:rgba(251,146,60,.1);color:#fb923c;}.chip[data-filter="xmiles"] .dot{background:#fb923c;}.chip[data-filter="outros"].active{border-color:var(--amber);background:var(--amber-dim);color:var(--amber);}.chip[data-filter="outros"] .dot{background:var(--amber);}
 .chip .count{font-size:10px;opacity:.7;}
 .kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:28px;}
 .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden;}
@@ -120,6 +120,7 @@ tr:hover td{background:var(--surface2);}
     <div class="chip active" data-filter="all" onclick="setAgencyFilter('all')"><span class="dot"></span>TODOS<span class="count" id="countAll"></span></div>
     <div class="chip" data-filter="xmiles-b" onclick="setAgencyFilter('xmiles-b')"><span class="dot"></span>XMILES B<span class="count" id="countXmilesB"></span></div>
     <div class="chip" data-filter="xmiles-e" onclick="setAgencyFilter('xmiles-e')"><span class="dot"></span>XMILES E<span class="count" id="countXmilesE"></span></div>
+    <div class="chip" data-filter="xmiles" onclick="setAgencyFilter('xmiles')"><span class="dot"></span>XMILES<span class="count" id="countXmiles"></span></div>
     <div class="chip" data-filter="speed" onclick="setAgencyFilter('speed')"><span class="dot"></span>SPEED<span class="count" id="countSpeed"></span></div>
     <div class="chip" data-filter="outros" onclick="setAgencyFilter('outros')"><span class="dot"></span>OUTROS<span class="count" id="countOutros"></span></div>
   </div>
@@ -250,7 +251,8 @@ function updateCounts(){
   document.getElementById('countXmilesB').textContent=` (${d.filter(t=>t.agencyGroup==='xmiles-b').length})`;
   document.getElementById('countXmilesE').textContent=` (${d.filter(t=>t.agencyGroup==='xmiles-e').length})`;
   document.getElementById('countSpeed').textContent=` (${d.filter(t=>t.agencyGroup==='speed').length})`;
-  document.getElementById('countOutros').textContent=` (${d.filter(t=>t.agencyGroup==='outros'||t.agencyGroup==='xmiles').length})`;
+  document.getElementById('countXmiles').textContent=` (${d.filter(t=>t.agencyGroup==='xmiles').length})`;
+  document.getElementById('countOutros').textContent=` (${d.filter(t=>t.agencyGroup==='outros').length})`;
 }
 function renderKPIs(){
   const d=getFiltered();
