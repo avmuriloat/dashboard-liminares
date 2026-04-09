@@ -121,6 +121,7 @@ tr:hover td{background:var(--surface2);}
   <div class="filter-row">
     <div class="chip active" data-period="all" onclick="setPeriodFilter('all')"><span class="dot"></span>TUDO</div>
     <div class="chip" data-period="today" onclick="setPeriodFilter('today')"><span class="dot"></span>HOJE</div>
+    <div class="chip" data-period="yesterday" onclick="setPeriodFilter('yesterday')"><span class="dot"></span>ONTEM</div>
     <div class="chip" data-period="3d" onclick="setPeriodFilter('3d')"><span class="dot"></span>3 DIAS</div>
     <div class="chip" data-period="7d" onclick="setPeriodFilter('7d')"><span class="dot"></span>7 DIAS</div>
     <div class="chip" data-period="30d" onclick="setPeriodFilter('30d')"><span class="dot"></span>30 DIAS</div>
@@ -264,6 +265,7 @@ function getDateRange(){
   const now=new Date();const end=now.toISOString().slice(0,10);
   const d=new Date(now);
   if(currentPeriod==='today'){}
+  else if(currentPeriod==='yesterday'){d.setDate(d.getDate()-1);return{start:d.toISOString().slice(0,10),end:d.toISOString().slice(0,10)};}
   else if(currentPeriod==='3d')d.setDate(d.getDate()-2);
   else if(currentPeriod==='7d')d.setDate(d.getDate()-6);
   else if(currentPeriod==='30d')d.setDate(d.getDate()-29);
@@ -312,11 +314,15 @@ function renderKPIs(){
   const totalEmissoes=d.filter(t=>t.pts<0).reduce((s,t)=>s+t.pts,0);
   const totalCreditos=d.filter(t=>t.pts>0).reduce((s,t)=>s+t.pts,0);
   const locs=new Set(d.filter(t=>t.loc).map(t=>t.loc));
-  const isXmiles=currentAgency==='xmiles'||currentAgency==='xmiles-b'||currentAgency==='xmiles-e';
-  const isSpeed=currentAgency==='speed';
   let kpiHtml=`<div class="kpi k-blue"><div class="kpi-label">Saldo Total</div><div class="kpi-value" style="color:var(--azul)">${fmt(saldoContaTotal)}</div><div class="kpi-sub">${names.length} conta${names.length>1?'s':''}</div></div>`;
-  if(isXmiles)kpiHtml+=`<div class="kpi k-green"><div class="kpi-label">Saldo Xmiles</div><div class="kpi-value" style="color:var(--green)">${fmt(saldoXmilesTotal)}</div><div class="kpi-sub">SOMASE planilha</div></div>`;
-  if(isSpeed)kpiHtml+=`<div class="kpi k-purple"><div class="kpi-label">Saldo Speed</div><div class="kpi-value" style="color:var(--purple)">${fmt(saldoSpeedTotal)}</div><div class="kpi-sub">SOMASE planilha</div></div>`;
+  if(currentAgency!=='all'){
+    const agLabel={'xmiles-b':'XMILES B','xmiles-e':'XMILES E','xmiles':'XMILES','speed':'SPEED','outros':'OUTROS'}[currentAgency]||currentAgency;
+    const agColor={'xmiles-b':'var(--green)','xmiles-e':'var(--cyan)','xmiles':'#fb923c','speed':'var(--purple)','outros':'var(--amber)'}[currentAgency]||'var(--text)';
+    const agClass={'xmiles-b':'k-green','xmiles-e':'k-cyan','xmiles':'k-amber','speed':'k-purple','outros':'k-amber'}[currentAgency]||'k-blue';
+    const allAcctData=names.flatMap(n=>allDataByAccount[n]||[]);
+    const agSaldo=allAcctData.filter(t=>t.agencyGroup===currentAgency).reduce((s,t)=>s+t.pts,0);
+    kpiHtml+=`<div class="kpi ${agClass}"><div class="kpi-label">Saldo ${agLabel}</div><div class="kpi-value" style="color:${agColor}">${fmt(agSaldo)}</div><div class="kpi-sub">creditos - debitos (historico)</div></div>`;
+  }
   kpiHtml+=`<div class="kpi k-red"><div class="kpi-label">Total Emissoes</div><div class="kpi-value" style="color:var(--red)">${fmt(totalEmissoes)}</div><div class="kpi-sub">${d.filter(t=>t.pts<0).length} debitos</div></div>
     <div class="kpi k-green"><div class="kpi-label">Total Creditos</div><div class="kpi-value" style="color:var(--green)">+${fmt(totalCreditos)}</div><div class="kpi-sub">${d.filter(t=>t.pts>0).length} creditos</div></div>
     <div class="kpi k-amber"><div class="kpi-label">Localizadores</div><div class="kpi-value" style="color:var(--amber)">${locs.size}</div><div class="kpi-sub">${d.length} lancamentos</div></div>`;
