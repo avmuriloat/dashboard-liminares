@@ -175,7 +175,7 @@ async function loadAllData(){
   let loaded=0;allDataByAccount={};accountMeta={};
   await Promise.all(ACCOUNTS.map(async(acct)=>{
     try{
-      const r=await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${acct.gid}`);
+      const r=await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${acct.gid}&range=A1:Z`);
       if(!r.ok)throw new Error('HTTP '+r.status);
       parseAccountCSV(acct.name,await r.text());
     }catch(e){
@@ -191,19 +191,20 @@ async function loadAllData(){
   document.getElementById('footerText').textContent=`Dashboard Liminares — Azul Fidelidade — ${ACCOUNTS.length} contas — Atualizado: ${new Date().toLocaleString('pt-BR')}`;
 }
 
-// Estrutura planilha:
-// Linha 1(idx0): B1=saldo_total, G1=saldo_conta_ref
-// Linha 2(idx1): B2=saldo_xmiles
-// Linha 3(idx2): B3=saldo_speed
-// Linha 4(idx3): cabecalho
-// Linha 5+(idx4+): dados
-// Colunas: A(0)ano B(1)data C(2)loc D(3)tipo E(4)pontos F(5)saldo G(6)info H(7)agencia I(8)nota
+// Estrutura planilha (variavel por conta):
+// Linhas iniciais: labels em A, valores em B. Ex: "saldo","saldo xmiles","saldo xmiles B","saldo xmiles E","saldo speed"
+// Depois: cabecalho e dados (detectados por regex de data em col B)
+// Colunas dados: A(0)ano B(1)data C(2)loc D(3)tipo E(4)pontos F(5)saldo G(6)info H(7)agencia I(8)nota
 function parseAccountCSV(accountName,csv){
   const rows=Papa.parse(csv,{header:false,skipEmptyLines:false}).data;
-  const saldoTotal =parseNum(rows[0]?.[1]);
-  const saldoXmiles=parseNum(rows[1]?.[1]);
-  const saldoSpeed =parseNum(rows[2]?.[1]);
-  const saldoConta =parseNum(rows[0]?.[6]);
+  let saldoTotal=0,saldoXmiles=0,saldoSpeed=0,saldoConta=0;
+  const hLimit=Math.min(10,rows.length);
+  for(let i=0;i<hLimit;i++){
+    const lbl=(rows[i]?.[0]||'').toString().toLowerCase().trim();
+    if(lbl==='saldo'){saldoTotal=parseNum(rows[i]?.[1]);saldoConta=parseNum(rows[i]?.[6]);}
+    else if(lbl==='saldo xmiles')saldoXmiles=parseNum(rows[i]?.[1]);
+    else if(lbl==='saldo speed')saldoSpeed=parseNum(rows[i]?.[1]);
+  }
   const dateRe=/^\d{4}-\d{2}-\d{2}/;
   const txs=[];
   for(let i=0;i<rows.length;i++){
