@@ -87,6 +87,8 @@ tr:hover td{background:var(--surface2);}
 .route{color:var(--text2);font-size:11px;}
 .agency-cell{font-size:11px;}.agency-cell.xmiles-b{color:var(--green);font-weight:700;}.agency-cell.xmiles-e{color:var(--cyan);font-weight:700;}.agency-cell.speed{color:var(--purple);font-weight:700;}
 .count-info{font-size:12px;color:var(--text2);margin-left:auto;}
+.date-input{padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:inherit;outline:none;}.date-input:focus{border-color:var(--azul);}
+.chip[data-period].active{border-color:var(--azul);background:var(--azul-glow);color:var(--azul);}.chip[data-period] .dot{background:var(--azul);}
 .footer{text-align:center;padding:24px;font-size:11px;color:var(--text3);}
 .acct-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.3px;}
 .acct-badge.bia{background:var(--red-dim);color:#f87171;}.acct-badge.leticia{background:var(--green-dim);color:#34d399;}.acct-badge.priscila{background:var(--purple-dim);color:#a78bfa;}.acct-badge.andressa{background:var(--amber-dim);color:#fbbf24;}.acct-badge.ana-carol{background:var(--cyan-dim);color:#22d3ee;}.acct-badge.luzineide{background:var(--pink-dim);color:#f472b6;}
@@ -113,6 +115,19 @@ tr:hover td{background:var(--surface2);}
 <div class="filter-section">
   <div class="section-label">Contas</div>
   <div class="filter-row" id="accountFilters"></div>
+</div>
+<div class="filter-section">
+  <div class="section-label">Periodo</div>
+  <div class="filter-row">
+    <div class="chip active" data-period="all" onclick="setPeriodFilter('all')"><span class="dot"></span>TUDO</div>
+    <div class="chip" data-period="today" onclick="setPeriodFilter('today')"><span class="dot"></span>HOJE</div>
+    <div class="chip" data-period="3d" onclick="setPeriodFilter('3d')"><span class="dot"></span>3 DIAS</div>
+    <div class="chip" data-period="7d" onclick="setPeriodFilter('7d')"><span class="dot"></span>7 DIAS</div>
+    <div class="chip" data-period="30d" onclick="setPeriodFilter('30d')"><span class="dot"></span>30 DIAS</div>
+    <div class="chip" data-period="custom" onclick="setPeriodFilter('custom')"><span class="dot"></span>PERSONALIZADO</div>
+    <input type="date" id="dateStart" class="date-input" style="display:none" onchange="applyCustomDate()">
+    <input type="date" id="dateEnd" class="date-input" style="display:none" onchange="applyCustomDate()">
+  </div>
 </div>
 <div class="filter-section" style="margin-bottom:28px;">
   <div class="section-label">Agencia</div>
@@ -166,7 +181,7 @@ const ACCOUNTS=[
   {name:'LUZINEIDE',   gid:'900641041',   cssClass:'luzineide', color:'#f472b6'},
 ];
 const ACCT_COLOR=Object.fromEntries(ACCOUNTS.map(a=>[a.name,a.color]));
-let allDataByAccount={},accountMeta={},selectedAccounts=new Set(['all']),currentAgency='all',currentType='all',currentSearch='',charts={};
+let allDataByAccount={},accountMeta={},selectedAccounts=new Set(['all']),currentAgency='all',currentType='all',currentSearch='',currentPeriod='all',customDateStart='',customDateEnd='',charts={};
 
 async function loadAllData(){
   document.getElementById('loadingOverlay').classList.remove('hidden');
@@ -243,11 +258,44 @@ function toggleAccount(name){
   updateAll();
 }
 function getSelectedData(){const names=selectedAccounts.has('all')?ACCOUNTS.map(a=>a.name):[...selectedAccounts];return names.flatMap(n=>allDataByAccount[n]||[]);}
-function getFiltered(){let d=getSelectedData();if(currentAgency!=='all')d=d.filter(t=>t.agencyGroup===currentAgency);return d;}
-function setAgencyFilter(f){currentAgency=f;document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));document.querySelector(`.chip[data-filter="${f}"]`).classList.add('active');updateAll();}
+function getDateRange(){
+  if(currentPeriod==='all')return{start:null,end:null};
+  if(currentPeriod==='custom')return{start:customDateStart,end:customDateEnd};
+  const now=new Date();const end=now.toISOString().slice(0,10);
+  const d=new Date(now);
+  if(currentPeriod==='today'){}
+  else if(currentPeriod==='3d')d.setDate(d.getDate()-2);
+  else if(currentPeriod==='7d')d.setDate(d.getDate()-6);
+  else if(currentPeriod==='30d')d.setDate(d.getDate()-29);
+  return{start:d.toISOString().slice(0,10),end};
+}
+function getFiltered(){
+  let d=getSelectedData();
+  if(currentAgency!=='all')d=d.filter(t=>t.agencyGroup===currentAgency);
+  const{start,end}=getDateRange();
+  if(start)d=d.filter(t=>t.date>=start);
+  if(end)d=d.filter(t=>t.date<=end);
+  return d;
+}
+function setPeriodFilter(p){
+  currentPeriod=p;
+  document.querySelectorAll('.chip[data-period]').forEach(c=>c.classList.toggle('active',c.dataset.period===p));
+  const ds=document.getElementById('dateStart'),de=document.getElementById('dateEnd');
+  if(p==='custom'){ds.style.display='';de.style.display='';ds.focus();}
+  else{ds.style.display='none';de.style.display='none';updateAll();}
+}
+function applyCustomDate(){
+  customDateStart=document.getElementById('dateStart').value||'';
+  customDateEnd=document.getElementById('dateEnd').value||'';
+  if(customDateStart||customDateEnd)updateAll();
+}
+function setAgencyFilter(f){currentAgency=f;document.querySelectorAll('.chip[data-filter]').forEach(c=>c.classList.remove('active'));document.querySelector(`.chip[data-filter="${f}"]`).classList.add('active');updateAll();}
 function updateAll(){updateCounts();renderKPIs();renderCharts();renderTable();}
 function updateCounts(){
-  const d=getSelectedData();
+  let d=getSelectedData();
+  const{start,end}=getDateRange();
+  if(start)d=d.filter(t=>t.date>=start);
+  if(end)d=d.filter(t=>t.date<=end);
   document.getElementById('countAll').textContent=` (${d.length})`;
   document.getElementById('countXmilesB').textContent=` (${d.filter(t=>t.agencyGroup==='xmiles-b').length})`;
   document.getElementById('countXmilesE').textContent=` (${d.filter(t=>t.agencyGroup==='xmiles-e').length})`;
@@ -264,13 +312,15 @@ function renderKPIs(){
   const totalEmissoes=d.filter(t=>t.pts<0).reduce((s,t)=>s+t.pts,0);
   const totalCreditos=d.filter(t=>t.pts>0).reduce((s,t)=>s+t.pts,0);
   const locs=new Set(d.filter(t=>t.loc).map(t=>t.loc));
-  document.getElementById('kpiStrip').innerHTML=`
-    <div class="kpi k-blue"><div class="kpi-label">Saldo Total</div><div class="kpi-value" style="color:var(--azul)">${fmt(saldoContaTotal)}</div><div class="kpi-sub">${names.length} conta${names.length>1?'s':''}</div></div>
-    <div class="kpi k-green"><div class="kpi-label">Saldo Xmiles</div><div class="kpi-value" style="color:var(--green)">${fmt(saldoXmilesTotal)}</div><div class="kpi-sub">SOMASE planilha</div></div>
-    <div class="kpi k-purple"><div class="kpi-label">Saldo Speed</div><div class="kpi-value" style="color:var(--purple)">${fmt(saldoSpeedTotal)}</div><div class="kpi-sub">SOMASE planilha</div></div>
-    <div class="kpi k-red"><div class="kpi-label">Total Emissoes</div><div class="kpi-value" style="color:var(--red)">${fmt(totalEmissoes)}</div><div class="kpi-sub">${d.filter(t=>t.pts<0).length} debitos</div></div>
+  const isXmiles=currentAgency==='xmiles'||currentAgency==='xmiles-b'||currentAgency==='xmiles-e';
+  const isSpeed=currentAgency==='speed';
+  let kpiHtml=`<div class="kpi k-blue"><div class="kpi-label">Saldo Total</div><div class="kpi-value" style="color:var(--azul)">${fmt(saldoContaTotal)}</div><div class="kpi-sub">${names.length} conta${names.length>1?'s':''}</div></div>`;
+  if(isXmiles)kpiHtml+=`<div class="kpi k-green"><div class="kpi-label">Saldo Xmiles</div><div class="kpi-value" style="color:var(--green)">${fmt(saldoXmilesTotal)}</div><div class="kpi-sub">SOMASE planilha</div></div>`;
+  if(isSpeed)kpiHtml+=`<div class="kpi k-purple"><div class="kpi-label">Saldo Speed</div><div class="kpi-value" style="color:var(--purple)">${fmt(saldoSpeedTotal)}</div><div class="kpi-sub">SOMASE planilha</div></div>`;
+  kpiHtml+=`<div class="kpi k-red"><div class="kpi-label">Total Emissoes</div><div class="kpi-value" style="color:var(--red)">${fmt(totalEmissoes)}</div><div class="kpi-sub">${d.filter(t=>t.pts<0).length} debitos</div></div>
     <div class="kpi k-green"><div class="kpi-label">Total Creditos</div><div class="kpi-value" style="color:var(--green)">+${fmt(totalCreditos)}</div><div class="kpi-sub">${d.filter(t=>t.pts>0).length} creditos</div></div>
     <div class="kpi k-amber"><div class="kpi-label">Localizadores</div><div class="kpi-value" style="color:var(--amber)">${locs.size}</div><div class="kpi-sub">${d.length} lancamentos</div></div>`;
+  document.getElementById('kpiStrip').innerHTML=kpiHtml;
 }
 function destroyCharts(){Object.values(charts).forEach(c=>c.destroy());charts={};}
 function renderCharts(){
